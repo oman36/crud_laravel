@@ -1,0 +1,34 @@
+{
+  "folders": {
+    "server_id": {
+      "table" : "servers",
+      "dataColumn" : "id",
+      "nameColumns" : [
+        "name"
+      ]
+    },
+    "repository_id": {
+      "table" : "repositories",
+      "dataColumn" : "id",
+      "nameColumns" : [
+        "link"
+      ]
+    },
+    "port_id": {
+      "table" : "ports",
+      "dataColumn" : "id",
+      "nameColumns" : [
+        "port"
+      ]
+    }
+  },
+  "ports": {
+    "server_id": {
+      "table" : "servers",
+      "dataColumn" : "id",
+      "nameColumns" : [
+        "name"
+      ]
+    }
+  }
+}
