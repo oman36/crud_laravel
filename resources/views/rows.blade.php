@@ -73,7 +73,7 @@
                 e.preventDefault();
             }
         });
-        if ({{array_reduce(request('filters'), function ($item, $before) { return $item || $before;})}}) {
+        if ({{array_reduce(request('filters', []), function ($item, $before) { return $item || $before;})}}) {
             $('a[href="#collapseExample"]').click()
         }
     </script>
