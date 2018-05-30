@@ -1,4 +1,5 @@
 <nav aria-label="Page navigation example">
+    @php $pagination->setPath(request()->getUri() . '?' . http_build_query(request()->except('page'))); @endphp
     <ul class="pagination justify-content-center">
         @if($pagination->previousPageUrl())
         <li class="page-item">
