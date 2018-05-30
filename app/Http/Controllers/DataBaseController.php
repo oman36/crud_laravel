@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\DataBaseSettings\DataBaseSettings;
+use App\FormGenerator\FormGenerator;
 use Illuminate\Database\Schema\MySqlBuilder;
 use Illuminate\Http\Request;
 
@@ -47,7 +49,7 @@ class DataBaseController
 
         /** @var \Illuminate\Database\Query\Builder $query */
         $query = \DB::table($table);
-        if ($data = ($this->getData()[$table] ?? [])) {
+        if ($data = (new DataBaseSettings())->getRelationsForTable($table)) {
             foreach ($data as $column => $relation) {
                 unset($cols[array_search($table . '.' . $column, $cols, true)]);
                 $query->join(
@@ -67,6 +69,14 @@ class DataBaseController
         }
         $query->select($cols);
 
+        foreach ($request->get('filters', []) as $field => $filter) {
+            $query->where(
+                $field,
+                'like',
+                '%' . str_replace(['%', '_'], ['\%', '\_'], $filter) . '%'
+            );
+        }
+
         $pagination = $query
             ->orderBy($table . '.id', 'desc')
             ->paginate($request->get('per-page', 15));
@@ -81,6 +91,7 @@ class DataBaseController
                 );
             }, $cols),
             'pagination'   => $pagination,
+            'formFields' => (new FormGenerator())->generateForTable($table)
         ]);
     }
 
@@ -90,75 +101,25 @@ class DataBaseController
 
         view()->share('title', $isNew ? $table . ' new' : $table . ' update ' . $id);
 
-        $fieldsData = \DB::select('show fields from ' . $table);
-
-        $typeToHTML = [
-            'int'       => 'number',
-            'tinyint'   => 'radio',
-            'varchar'   => 'text',
-            'text'      => 'textarea',
-            'date'      => 'text',
-            'datetime'  => 'text',
-            'timestamp' => 'text',
-        ];
-        $fields = [];
-
         if (!$isNew) {
             $row = (array)\DB::table($table)->where('id', $id)->first();
         }
 
-        foreach ($fieldsData as $i => $field) {
-            if ('id' === $field->Field) {
-                $fields[$i] = [
-                    'name'     => 'id',
-                    'html'     => 'hidden',
-                    'required' => false,
-                    'max'      => -1,
-                    'value'    => $isNew ? null : $id,
-                ];
+        $fieldsData = (new FormGenerator())->generateForTable($table);
+        foreach ($fieldsData as &$field) {
+            if ('id' === $field['name']) {
+                $field['value'] = $isNew ? null : $id;
                 continue;
             }
-            preg_match('/^([^(]+)\s*(?:\((\d+)\))?\s*(.+)?/ui', $field->Type, $typeData);
-            $fields[$i] = [
-                'name'     => $field->Field,
-                'html'     => $typeToHTML[$typeData[1]],
-                'max'      => $typeData[2] ?? -1,
-                'min'      => -1,
-                'required' => 'No' === $field->Null && null === $field->Default &&
-                    !(false === strpos($field->Extra, 'auto_increment')),
-                'value'    => $isNew ? $field->Default : $row[$field->Field],
-            ];
-
-            if ('int' === $typeData[1]) {
-                $fields[$i]['max'] = 2147483647;
-                if (false !== strpos($typeData[3] ?? '', 'unsigned')) {
-                    $fields[$i]['max'] *= 2;
-                    $fields[$i]['min'] = 0;
-                } else {
-                    $fields[$i]['min'] = -$fields[$i]['max'];
-                }
-            }
-
-            $additionalData = $this->getData()[$table][$field->Field] ?? null;
-            if (null === $additionalData) {
+            if ($isNew) {
                 continue;
             }
-
-            $nameColumns = implode('`,`', $additionalData['nameColumns']);
-            $select = \DB::table($additionalData['table'])
-                ->select('id', \DB::raw("CONCAT(`{$nameColumns}`) as `name`"))
-                ->get();
-
-            $fields[$i]['options'] = array_combine(
-                $select->pluck('id')->toArray(),
-                $select->pluck('name')->toArray()
-            );
-            $fields[$i]['html'] = 'select';
+            $field['value'] = $row[$field['name']];
         }
 
         return view('row', [
             'active_table' => $table,
-            'fields'       => $fields,
+            'fields'       => $fieldsData,
         ]);
     }
 
@@ -182,10 +143,5 @@ class DataBaseController
         \DB::table($table)->where('id', $id)->delete();
 
         return redirect("/{$table}");
-    }
-
-    protected function getData(): array
-    {
-        return json_decode(@file_get_contents(base_path('data.json')), true);
     }
 }
