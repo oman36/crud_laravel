@@ -40,7 +40,7 @@ class DataBaseController
         ]);
         view()->share('title', 'Table ' . $table);
 
-        $cols = array_map(
+        $filterCols = $cols = array_map(
             function ($item) use ($table) {
                 return "{$table}.{$item}";
             },
@@ -51,7 +51,8 @@ class DataBaseController
         $query = \DB::table($table);
         if ($data = (new DataBaseSettings())->getRelationsForTable($table)) {
             foreach ($data as $column => $relation) {
-                unset($cols[array_search($table . '.' . $column, $cols, true)]);
+                $oldName = array_search($table . '.' . $column, $cols, true);
+                unset($cols[$oldName], $filterCols[$oldName]);
                 $query->join(
                     $relation['table'],
                     $table . '.' . $column,
@@ -65,11 +66,20 @@ class DataBaseController
                     reset($relation['nameColumns']),
                     $relation['table'] . '_' . reset($relation['nameColumns'])
                 );
+
+                $filterCols[] = sprintf(
+                    '%s.%s',
+                    $relation['table'],
+                    reset($relation['nameColumns'])
+                );
             }
         }
         $query->select($cols);
 
         foreach ($request->get('filters', []) as $field => $filter) {
+            if ('' === $filter || null === $filter) {
+                continue;
+            }
             $query->where(
                 $field,
                 'like',
@@ -91,7 +101,7 @@ class DataBaseController
                 );
             }, $cols),
             'pagination'   => $pagination,
-            'formFields' => (new FormGenerator())->generateForTable($table)
+            'filterFields' => $filterCols
         ]);
     }
 

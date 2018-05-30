@@ -8,7 +8,8 @@
     </p>
     <div class="collapse" id="collapseExample">
         <form method="GET">
-            @foreach($fields as $n => $field)
+            @php $filterValues = request('filters'); @endphp
+            @foreach($filterFields as $n => $field)
                 <div class="input-group mb-3">
                     <div class="input-group-prepend">
                         <label class="input-group-text" for="field_filter_{{$n}}">
@@ -19,7 +20,7 @@
                             type="text"
                             class="form-control"
                             id="field_filter_{{$n}}"
-                            value="{{request()->input('filters.' . $field, '')}}"
+                            value="{{$filterValues[$field] ?? ''}}"
                             name="filters[{{$field}}]"
                     >
                 </div>
