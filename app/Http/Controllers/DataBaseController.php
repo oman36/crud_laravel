@@ -28,12 +28,11 @@ class DataBaseController
 
     public function tables()
     {
-        return view('tables',  ['title' => 'Tables']);
+        return view('tables', ['title' => 'Tables']);
     }
 
     public function rows(string $table, Request $request)
     {
-
         view()->share('breadcrumbs', [
             ['name' => $table, 'link' => '/' . $table, 'active' => false],
         ]);
@@ -89,7 +88,7 @@ class DataBaseController
     {
         $isNew = 'new' === $id;
 
-        view()->share('title', $isNew ? $table . ' new' : $table . ' update '. $id);
+        view()->share('title', $isNew ? $table . ' new' : $table . ' update ' . $id);
 
         $fieldsData = \DB::select('show fields from ' . $table);
 
@@ -124,10 +123,21 @@ class DataBaseController
                 'name'     => $field->Field,
                 'html'     => $typeToHTML[$typeData[1]],
                 'max'      => $typeData[2] ?? -1,
+                'min'      => -1,
                 'required' => 'No' === $field->Null && null === $field->Default &&
                     !(false === strpos($field->Extra, 'auto_increment')),
                 'value'    => $isNew ? $field->Default : $row[$field->Field],
             ];
+
+            if ('int' === $typeData[1]) {
+                $fields[$i]['max'] = 2147483647;
+                if (false !== strpos($typeData[3] ?? '', 'unsigned')) {
+                    $fields[$i]['max'] *= 2;
+                    $fields[$i]['min'] = 0;
+                } else {
+                    $fields[$i]['min'] = -$fields[$i]['max'];
+                }
+            }
 
             $additionalData = $this->getData()[$table][$field->Field] ?? null;
             if (null === $additionalData) {
@@ -155,7 +165,6 @@ class DataBaseController
     public function saveRow(string $table, string $id, Request $request)
     {
         $all = $request->all();
-        dump($all);die();
         $isNew = ($id !== ($all['id'] ?? null));
         unset($all['id']);
 
