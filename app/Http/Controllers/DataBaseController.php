@@ -88,7 +88,10 @@ class DataBaseController
         }
 
         $pagination = $query
-            ->orderBy($table . '.id', 'desc')
+            ->orderBy(
+                \request('order_by', $table . '.id'),
+                \request('order_direct', 'desc')
+            )
             ->paginate($request->get('per-page', 15));
         $rows = $pagination->items();
 
