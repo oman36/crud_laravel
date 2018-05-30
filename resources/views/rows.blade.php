@@ -73,7 +73,7 @@
                 e.preventDefault();
             }
         });
-        if ({{is_array(request()->input('filters'))}}) {
+        if ({{array_reduce(request('filters'), function ($item, $before) { return $item || $before;})}}) {
             $('a[href="#collapseExample"]').click()
         }
     </script>
